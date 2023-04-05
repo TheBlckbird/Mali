@@ -1,0 +1,110 @@
+#!/usr/bin/env php
+
+<?php
+
+class Mali
+{
+    private string $file;
+    private string $newFilename;
+
+    function __construct(string $file, bool $watch = false)
+    {
+        $this->file = $file;
+        $this->newFilename = preg_replace("/(?<=.)\.mali(?=.php)/", "", $this->file);
+
+        $this->compile();
+
+        if ($watch) {
+            echo "Press Ctrl-C to stop.\n\n";
+            echo $this->getCompileInformation() . "\n";
+            $this->watchFileChange();
+        }
+    }
+
+    function compile()
+    {
+        $fileContent = $this->getFileContent();
+
+        $newFileContent = $fileContent;
+        $newFileContent = preg_replace("/{{([^}]+)}}/", "<?php echo(htmlentities($1)) ?>", $newFileContent);
+        $newFileContent = preg_replace("/{\!([^\]]+)\!}/", "<?php echo($1) ?>", $newFileContent);
+
+        $this->writeFileContent($newFileContent);
+    }
+
+    function watchFileChange(int $interval = 500_000)
+    {
+        $wasModified = false;
+        $timeLastCycle = 0;
+
+        while (true) {
+            $time = time();
+            $modifiedTime = filemtime($this->file);
+
+            // If the file has been modified since the last check, log the change
+            if ($modifiedTime === $time || ($modifiedTime === $timeLastCycle && !$wasModified)) {
+                echo $this->getCompileInformation() . "\n";
+                $this->compile();
+                $wasModified = true;
+            } else {
+
+                $wasModified = false;
+            }
+
+            $timeLastCycle = $time;
+
+            clearstatcache();
+            // Sleep for the specified interval before checking again
+            usleep($interval);
+        }
+    }
+
+    function getCompileInformation(): string
+    {
+        return "[\033[33m" . date("H:i:s") . "\033[39m] Compiling \033[32m$this->file\033[39m into \033[36mout/$this->newFilename\033[39m";
+    }
+
+    function getFileContent(): string
+    {
+        if (!file_exists($this->file)) {
+            die("\033[31mFile not found!\n");
+        }
+
+        $fileContent = file_get_contents($this->file);
+
+        return $fileContent;
+    }
+
+    function writeFileContent(string $content)
+    {
+        $directory = implode("/", array_slice(explode("/", $this->newFilename), 0, -1));
+        $this->createDirectoryIfNotExists("out/" . $directory);
+        $outputFile = fopen("out/" . $this->newFilename, "w") or die("Couldn't create output file!");
+        fwrite($outputFile, $content);
+        fclose($outputFile);
+    }
+
+    function createDirectoryIfNotExists(string $directory)
+    {
+        if (!file_exists($directory)) {
+            mkdir($directory, 0777, true);
+        }
+    }
+}
+
+if (!array_key_exists(1, $argv)) {
+    die("\033[31mMissing file!\n");
+}
+
+if (array_key_exists(2, $argv)) {
+    if ($argv[2] === "--watch") {
+
+        $mali = new Mali(file: $argv[1], watch: true);
+    } else {
+
+        $mali = new Mali(file: $argv[1]);
+    }
+} else {
+
+    $mali = new Mali(file: $argv[1]);
+}
