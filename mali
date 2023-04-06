@@ -93,7 +93,7 @@ class Mali
 }
 
 if (!array_key_exists(1, $argv)) {
-    die("\033[31mMissing file!\n");
+    die("\033[31mNo file specified!\n");
 }
 
 if (array_key_exists(2, $argv)) {

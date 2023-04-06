@@ -11,9 +11,7 @@
         $var = "<b>hi</b>";
     ?>
     
-    <!-- double encoded: {{ $var }}<br>
-    not double encoded: {! $var !} -->
-
-    {{ {! $var !} }}
+    double encoded: {{ $var }}<br>
+    not double encoded: {! $var !}
 </body>
 </html>
